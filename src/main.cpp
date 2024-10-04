@@ -450,6 +450,7 @@ void webServer(void)
 
 void loop()
 {
+  static long lastTransferTime = 0; 
   static long lastLedChangeTime = 0;
   static bool ledState = false;
   bool buttonState = true;
