@@ -28,11 +28,12 @@ char WifiApName[40] = WIFI_AP_NAME;
 char MQTTClientName[40] = MQTT_CLIENT_NAME;
 char OtaClientName[40] = OTA_CLIENT_NAME;
 
-bool mqtt_start = false;
-
 // MQTT
 const char *pup_alive = "/topic/active";
-const char *sub_value1 = "/topic/value1";
+const char *pup_Volume = "/topic/volume";
+const char *pup_RelaisStatus = "/topic/relaisStatus";
+
+const char *sub_RelaisControl = "/topic/relaisControl";
 const char *sub_value2 = "/topic/value2";
 const char *sub_value3 = "/topic/value3";
 
@@ -41,6 +42,9 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 WiFiServer server(80);
+
+bool RelaisState = false;
+float volume = 0.0;
 
 #include <FlowSensor.h>
 
@@ -109,12 +113,12 @@ void MQTTcallback(char *topic, byte *payload, unsigned int length)
   }
   Serial.println();
 
-  if (strcmp(topic, sub_value1) == 0)
+  if (strcmp(topic, sub_RelaisControl) == 0)
   {
     if ((char)payload[0] == '0')
-      state = false;
+      RelaisState = false;
     else
-      state = true;
+      RelaisState = true;
   }
 
   if (strcmp(topic, sub_value2) == 0)
@@ -137,7 +141,7 @@ void reconnect()
     if (client.connect(MQTTClientName))
     {
 
-      client.subscribe(sub_value1);
+      client.subscribe(sub_RelaisControl);
       client.loop();
       client.subscribe(sub_value2);
       client.loop();
@@ -181,28 +185,34 @@ void setup()
   pinMode(PIN_BUZZER, OUTPUT);
 
   digitalWrite(PIN_LED_int, HIGH);
-  digitalWrite(PIN_RELAIS, HIGH); // off
+  digitalWrite(PIN_RELAIS, HIGH); // OFF
 
-  // beeb
-  digitalWrite(PIN_BUZZER, HIGH); // on
+  digitalWrite(PIN_BUZZER, HIGH); // ON
   delay(100);
   digitalWrite(PIN_BUZZER, LOW); // off
 
   // INPUT Definition
-  pinMode(PIN_BUTTON, INPUT); // Button
+
+  pinMode(PIN_BUTTON, INPUT);
 
   // flow sensor
   Sensor.begin(count);
 
-  // LCD display
+  /*
+   * When using lcd.print() (and almost everywhere you use string literals),
+   * is a good idea to use the macro F(String literal).
+   * This tells the compiler to store the string array in the flash memory
+   * instead of the ram memory. Usually you have more spare flash than ram.
+   * More info: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
+   */
+
   lcd.begin();
   lcd.backlight();
 
-  // LCD init and output
+  // Autoscroll
   lcd.setCursor(0, 0);
   lcd.print(F("WaterControlV1.0"));
 
-  // WifiManager:
   // clean FS, for testing
   // LittleFS.format();
 
@@ -338,7 +348,6 @@ void setup()
   // MQTT - Connection:
   client.setServer(mqtt_server, atoi(mqtt_port));
   client.setCallback(MQTTcallback);
-  mqtt_start = true;
 
   lcd.setCursor(0, 1);
   lcd.print(F("MQTT connected"));
@@ -402,6 +411,14 @@ String prepareHtmlPage()
   htmlPage += "connected ";
   htmlPage += "<br> <br>";
 
+  htmlPage += "Relais status        : "; // Damit wir auf unserer Website später auch etwas ablesen können, müssen wir diese Füllen.
+  htmlPage += RelaisState;               // Dies erreichen wir mit dem Befehl "client.println" , ähnlich wie "Serial.println"
+  htmlPage += "<br> <br>";
+
+  htmlPage += "Wassermenge       : "; // Damit wir auf unserer Website später auch etwas ablesen können, müssen wir diese Füllen.
+  htmlPage += volume;                 // Dies erreichen wir mit dem Befehl "client.println" , ähnlich wie "Serial.println"
+  htmlPage += "<br> <br>";
+
   htmlPage += "timer            : "; // Damit wir auf unserer Website später auch etwas ablesen können, müssen wir diese Füllen.
   htmlPage += millis();              // Dies erreichen wir mit dem Befehl "client.println" , ähnlich wie "Serial.println"
   htmlPage += "<br>";
@@ -412,7 +429,9 @@ String prepareHtmlPage()
 
 void webServer(void)
 {
-  WiFiClient client = server.available();
+  // WiFiClient client = server.available();
+
+  WiFiClient client = server.accept();
   // wait for a client (web browser) to connect
   if (client)
   {
@@ -450,16 +469,15 @@ void webServer(void)
 
 void loop()
 {
-  static long lastTransferTime = 0; 
+  static long lastTransferTime = 0;
+
+  static long lastTransferMQTTTime = 0;
+
   static long lastLedChangeTime = 0;
   static bool ledState = false;
+
   bool buttonState = true;
-
   static bool LastbuttonState = true;
-  bool buttonEvent = false;
-  static bool RelaisState = false;
-
-  static long lastTickTime = 0;
 
   // MQTT connect
   if (!client.connected())
@@ -475,14 +493,22 @@ void loop()
   webServer();
 
   // put your main code here, to run repeatedly:
-  if (mqtt_start) //  publish once
-  {
-    mqtt_start = false;
-    client.publish(pup_alive, "Restart WaterCorntrol!");
+
+  if (millis() - lastTransferTime > (1000000))
+  { // tbd sec
+    lastTransferTime = millis();
+
+    client.publish(pup_alive, "Hello World!");
   }
 
-  // LED blink
-  if (millis() - lastLedChangeTime > (1000)) // 1 sec
+  if (millis() - lastTransferMQTTTime > (10000))  // 10 Seconds
+  { 
+    lastTransferMQTTTime = millis();
+    client.publish(pup_RelaisStatus, String(RelaisState).c_str(), 1);
+    client.publish(pup_Volume, String(volume).c_str(), 1);
+  }
+
+  if (millis() - lastLedChangeTime > (1000)) // 1 Second
   {
     lastLedChangeTime = millis();
     if (ledState)
@@ -501,35 +527,25 @@ void loop()
 
   if ((buttonState != LastbuttonState) && buttonState)
   {
-    buttonEvent = true;
     // Serial.println(buttonState);
 
     Serial.println("event");
 
-    digitalWrite(PIN_BUZZER, HIGH); // ON
+    // beeb 
+    digitalWrite(PIN_BUZZER, HIGH); // on
     delay(50);
     digitalWrite(PIN_BUZZER, LOW); // off
 
-    buttonEvent = false;
     RelaisState = !RelaisState;
     if (RelaisState)
       Serial.println("R=ON");
     else
       Serial.println("R=OFF");
   }
-
   LastbuttonState = buttonState;
 
-  if (buttonEvent)
-  {
-    buttonEvent = false;
-    RelaisState = !RelaisState;
-    if (RelaisState)
-      Serial.println("ON");
-    else
-      Serial.println("OFF");
-  }
 
+  // Update LCD Display
   lcd.setCursor(0, 1);
 
   if (RelaisState)
@@ -543,11 +559,6 @@ void loop()
     lcd.print(F("R=OFF"));
   }
 
-  if (millis() - lastTickTime > (1000))
-  { // tbd sec
-    lastTransferTime = millis();
-    client.publish(pup_alive, "Hello World!");
-  }
   static unsigned long timebefore = 0; // Same type as millis()
 
   if (millis() - timebefore >= 1000)
@@ -556,7 +567,7 @@ void loop()
     Serial.print("Flow rate (L/minute) : ");
     Serial.println(Sensor.getFlowRate_m());
     Serial.print("Volume (L) : ");
-    float volume = Sensor.getVolume();
+    volume = Sensor.getVolume();
 
     Serial.println(volume);
     lcd.setCursor(8, 1);
