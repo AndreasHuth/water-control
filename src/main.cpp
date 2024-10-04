@@ -28,6 +28,8 @@ char WifiApName[40] = WIFI_AP_NAME;
 char MQTTClientName[40] = MQTT_CLIENT_NAME;
 char OtaClientName[40] = OTA_CLIENT_NAME;
 
+bool mqtt_start = false;
+
 // MQTT
 const char *pup_alive = "/topic/active";
 const char *sub_value1 = "/topic/value1";
@@ -181,13 +183,13 @@ void setup()
   digitalWrite(PIN_LED_int, HIGH);
   digitalWrite(PIN_RELAIS, HIGH); // off
 
-// beeb
+  // beeb
   digitalWrite(PIN_BUZZER, HIGH); // on
   delay(100);
   digitalWrite(PIN_BUZZER, LOW); // off
 
   // INPUT Definition
-  pinMode(PIN_BUTTON, INPUT);    // Button 
+  pinMode(PIN_BUTTON, INPUT); // Button
 
   // flow sensor
   Sensor.begin(count);
@@ -200,8 +202,7 @@ void setup()
   lcd.setCursor(0, 0);
   lcd.print(F("WaterControlV1.0"));
 
-
-  // WifiManager: 
+  // WifiManager:
   // clean FS, for testing
   // LittleFS.format();
 
@@ -337,6 +338,7 @@ void setup()
   // MQTT - Connection:
   client.setServer(mqtt_server, atoi(mqtt_port));
   client.setCallback(MQTTcallback);
+  mqtt_start = true;
 
   lcd.setCursor(0, 1);
   lcd.print(F("MQTT connected"));
@@ -474,15 +476,15 @@ void loop()
   webServer();
 
   // put your main code here, to run repeatedly:
-
-  if (millis() - lastTransferTime > (10000))
-  { // tbd sec
-    lastTransferTime = millis();
-    client.publish(pup_alive, "Hello World!");
+  if (mqtt_start) //  publish once
+  {
+    mqtt_start = false;
+    client.publish(pup_alive, "Restart WaterCorntrol!");
   }
 
-  if (millis() - lastLedChangeTime > (1000))
-  { // 1 sec
+  // LED blink
+  if (millis() - lastLedChangeTime > (1000)) // 1 sec
+  {
     lastLedChangeTime = millis();
     if (ledState)
     {
