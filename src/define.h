@@ -8,7 +8,7 @@
 #define MQTT_CLIENT_NAME    "Wifi_MQTT"
 #define OTA_CLIENT_NAME     "Wifi_OTA"
 
-#define DEVICE_NAME         "WEMOS D1 MINI - GARDENA"
+#define DEVICE_NAME         "WEMOS D1 MINI - WaterControl"
 
 #define SW_BASE_VERSION     "V1.1"
 

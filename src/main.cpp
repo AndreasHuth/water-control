@@ -179,34 +179,29 @@ void setup()
   pinMode(PIN_BUZZER, OUTPUT);
 
   digitalWrite(PIN_LED_int, HIGH);
-  digitalWrite(PIN_RELAIS, HIGH); // OFF
+  digitalWrite(PIN_RELAIS, HIGH); // off
 
-  digitalWrite(PIN_BUZZER, HIGH); // ON
+// beeb
+  digitalWrite(PIN_BUZZER, HIGH); // on
   delay(100);
   digitalWrite(PIN_BUZZER, LOW); // off
 
   // INPUT Definition
-
-  pinMode(PIN_BUTTON, INPUT);
+  pinMode(PIN_BUTTON, INPUT);    // Button 
 
   // flow sensor
   Sensor.begin(count);
 
-  /*
-   * When using lcd.print() (and almost everywhere you use string literals),
-   * is a good idea to use the macro F(String literal).
-   * This tells the compiler to store the string array in the flash memory
-   * instead of the ram memory. Usually you have more spare flash than ram.
-   * More info: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
-   */
-
+  // LCD display
   lcd.begin();
   lcd.backlight();
 
-  // Autoscroll
+  // LCD init and output
   lcd.setCursor(0, 0);
   lcd.print(F("WaterControlV1.0"));
 
+
+  // WifiManager: 
   // clean FS, for testing
   // LittleFS.format();
 
@@ -572,7 +567,7 @@ void loop()
   // Reset Volume
   if (millis() - reset >= 60000)
   {
-    //Sensor.resetVolume();
+    // Sensor.resetVolume();
     reset = millis();
   }
 }
