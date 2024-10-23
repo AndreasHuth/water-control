@@ -2,15 +2,18 @@
 #include "define.h"
 #include <LittleFS.h> //this needs to be first, or it all crashes and burns...
 
-#include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
+#ifndef CONFIG_LITTLEFS_FOR_IDF_3_2
+#include <time.h>
+#endif
+
+#define FORMAT_LITTLEFS_IF_FAILED true
 
 #include <LCD_I2C.h>
 
 LCD_I2C lcd(0x27, 16, 2); // Default address of most PCF8574 modules, change according
 
 // needed for library
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
+// #include <DNSServer.h>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
 
 // needed for OTA & MQTT
@@ -29,7 +32,7 @@ char MQTTClientName[40] = MQTT_CLIENT_NAME;
 char OtaClientName[40] = OTA_CLIENT_NAME;
 
 // MQTT
-const char *pup_alive = "/topic/active";
+const char *pup_alive = "/topic/WaterControlActive";
 const char *pup_Volume = "/topic/volume";
 const char *pup_RelaisStatus = "/topic/relaisStatus";
 
@@ -43,7 +46,9 @@ PubSubClient client(espClient);
 
 WiFiServer server(80);
 
+/// @brief
 bool RelaisState = false;
+bool event = true;
 float volume = 0.0;
 
 #include <FlowSensor.h>
@@ -53,6 +58,7 @@ FlowSensor Sensor(type, PIN_SENSOR);
 unsigned long reset = 0;
 
 // Uncomment if use ESP8266 and ESP32
+// ICACHE_RAM_ATTR void count() {
 void IRAM_ATTR count()
 {
   Sensor.count();
@@ -71,30 +77,36 @@ void saveConfigCallback()
 // OTA setup function:
 void OTA_setup(void)
 {
+
   // Ergänzung OTA
-  // Port defaults to 8266
-  ArduinoOTA.setPort(8266);
+  // Port defaults to 3232
+  ArduinoOTA.setPort(3232);
 
   // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname("WEMOSD1");
+  ArduinoOTA.setHostname("WEMOS_ESP32");
 
   // No authentication by default
-  ArduinoOTA.setPassword((const char *)"adminTest");
+  ArduinoOTA.setPassword((const char *)"admin2Motion");
 
-  ArduinoOTA.onStart([]()
-                     { Serial.println("Start"); });
-  ArduinoOTA.onEnd([]()
-                   { Serial.println("\nEnd"); });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
-                        { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
-  ArduinoOTA.onError([](ota_error_t error)
-                     {
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start");
+    //analogWrite(14, 0);
+    //digitalWrite(2, LOW);
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
     else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
     else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
   ArduinoOTA.begin();
 }
 
@@ -115,10 +127,18 @@ void MQTTcallback(char *topic, byte *payload, unsigned int length)
 
   if (strcmp(topic, sub_RelaisControl) == 0)
   {
+    event = true;
     if ((char)payload[0] == '0')
+    {
+
       RelaisState = false;
+      Serial.println("false");
+    }
     else
+    {
       RelaisState = true;
+      Serial.println("true");
+    }
   }
 
   if (strcmp(topic, sub_value2) == 0)
@@ -172,7 +192,8 @@ String ip2Str(IPAddress ip)
 }
 
 String ip = "";
-
+bool  startup = true;
+  
 void setup()
 {
   // put your setup code here, to run once:
@@ -181,19 +202,21 @@ void setup()
 
   // OUTPUT Definition !
   pinMode(PIN_LED_int, OUTPUT);
-  pinMode(PIN_RELAIS, OUTPUT);
-  pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_RELAIS_OFF, OUTPUT);
+  pinMode(PIN_RELAIS_ON, OUTPUT);
+  pinMode(PIN_RELAIS_SAFTY, OUTPUT);
 
   digitalWrite(PIN_LED_int, HIGH);
-  digitalWrite(PIN_RELAIS, HIGH); // OFF
-
-  digitalWrite(PIN_BUZZER, HIGH); // ON
-  delay(100);
-  digitalWrite(PIN_BUZZER, LOW); // off
+  digitalWrite(PIN_RELAIS_ON, HIGH);    // OFF
+  digitalWrite(PIN_RELAIS_OFF, HIGH);   // OFF
+  digitalWrite(PIN_RELAIS_SAFTY, HIGH); // OFF
 
   // INPUT Definition
 
-  pinMode(PIN_BUTTON, INPUT);
+  pinMode(PIN_BUTTON_1, INPUT_PULLUP);
+  pinMode(PIN_BUTTON_2, INPUT_PULLUP);
+  pinMode(PIN_BUTTON_3, INPUT_PULLUP);
+  
 
   // flow sensor
   Sensor.begin(count);
@@ -301,7 +324,7 @@ void setup()
     Serial.println("failed to connect and hit timeout");
     delay(3000);
     // reset and try again, or maybe put it to deep sleep
-    ESP.reset();
+    ESP.restart();
     delay(5000);
   }
 
@@ -362,6 +385,13 @@ void setup()
 
   lcd.setCursor(0, 1);
   lcd.print(F("              "));
+
+    // MQTT connect
+  if (!client.connected()) {
+    reconnect();}
+  client.loop();
+  // digitalWrite(2, LOW);
+  startup = true;
 }
 
 // prepare a web page to be send to a client (web browser)
@@ -493,21 +523,21 @@ void loop()
   webServer();
 
   // put your main code here, to run repeatedly:
+  /*
+    if (millis() - lastTransferTime > (1000000))
+    { // tbd sec
+      lastTransferTime = millis();
 
-  if (millis() - lastTransferTime > (1000000))
-  { // tbd sec
-    lastTransferTime = millis();
+      client.publish(pup_alive, "Hello World!");
+    }
 
-    client.publish(pup_alive, "Hello World!");
-  }
-
-  if (millis() - lastTransferMQTTTime > (10000))  // 10 Seconds
-  { 
-    lastTransferMQTTTime = millis();
-    client.publish(pup_RelaisStatus, String(RelaisState).c_str(), 1);
-    client.publish(pup_Volume, String(volume).c_str(), 1);
-  }
-
+    if (millis() - lastTransferMQTTTime > (10000)) // 10 Seconds
+    {
+      lastTransferMQTTTime = millis();
+      client.publish(pup_RelaisStatus, String(RelaisState).c_str(), 1);
+      client.publish(pup_Volume, String(volume).c_str(), 1);
+    }
+  */
   if (millis() - lastLedChangeTime > (1000)) // 1 Second
   {
     lastLedChangeTime = millis();
@@ -523,47 +553,50 @@ void loop()
     }
   }
 
-  buttonState = digitalRead(PIN_BUTTON);
 
-  if ((buttonState != LastbuttonState) && buttonState)
+
+
+  if (event)
   {
-    // Serial.println(buttonState);
+    // Update LCD Display
+    lcd.setCursor(0, 1);
 
-    Serial.println("event");
-
-    // beeb 
-    digitalWrite(PIN_BUZZER, HIGH); // on
-    delay(50);
-    digitalWrite(PIN_BUZZER, LOW); // off
-
-    RelaisState = !RelaisState;
     if (RelaisState)
+    {
+      digitalWrite(PIN_RELAIS_OFF, LOW);
+      digitalWrite(PIN_RELAIS_ON, HIGH);
+      digitalWrite(PIN_RELAIS_SAFTY, HIGH);
       Serial.println("R=ON");
+      lcd.print(F("R=ON "));
+    }
     else
+    {
+      digitalWrite(PIN_RELAIS_SAFTY, LOW);
+      digitalWrite(PIN_RELAIS_OFF, HIGH);
+      digitalWrite(PIN_RELAIS_ON, LOW);
+      lcd.print(F("R=OFF"));
       Serial.println("R=OFF");
-  }
-  LastbuttonState = buttonState;
-
-
-  // Update LCD Display
-  lcd.setCursor(0, 1);
-
-  if (RelaisState)
-  {
-    digitalWrite(PIN_RELAIS, LOW);
-    lcd.print(F("R=ON "));
-  }
-  else
-  {
-    digitalWrite(PIN_RELAIS, HIGH);
-    lcd.print(F("R=OFF"));
+    }
+    event = false;
   }
 
   static unsigned long timebefore = 0; // Same type as millis()
 
   if (millis() - timebefore >= 1000)
   {
-    Sensor.read();
+
+    bool button1 = digitalRead(PIN_BUTTON_1);
+    bool button2 = digitalRead(PIN_BUTTON_2);
+    bool button3 = digitalRead(PIN_BUTTON_3);
+    
+    Serial.print("button 1 : ");
+    Serial.println(button1);
+    Serial.print("button 2 : ");
+    Serial.println(button2);
+    Serial.print("button 3 : ");
+    Serial.println(button3);
+    
+    Sensor.read(0);
     Serial.print("Flow rate (L/minute) : ");
     Serial.println(Sensor.getFlowRate_m());
     Serial.print("Volume (L) : ");
