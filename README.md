@@ -1,6 +1,7 @@
 # Watering System
-## The project is still in progress !!!
 ## Short Description
+The project is still in progress !!!
+
 Project to control water quantities for watering plants. 
 Control of an main and control valve via: 
 * buttons
