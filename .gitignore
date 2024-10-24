@@ -2,4 +2,5 @@
 .clang_complete
 .gcc-flags.json
 .vscode
-.gitignore
+gitignore
+geheim.txt
