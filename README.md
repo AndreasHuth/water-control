@@ -1,9 +1,11 @@
-# watering System
+# Watering System
+## The project is still in progress !!!
 ## Short Description
 Project to control water quantities for watering plants. 
 Control of an main and control valve via: 
 * buttons
 * MQTT - Wifi
+
 Display to show the status and data.
 
 ## How to use

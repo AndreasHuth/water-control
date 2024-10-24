@@ -1,0 +1,9 @@
+partlist: - to be updated !
+- WEMOS D1 MINI
+- VL53LXX
+- MOTOR DRIVER
+- USB-C 18650 CHARGER
+- MT3608 
+- Buzzer
+- Main switch 
+- resistors 
