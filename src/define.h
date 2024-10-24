@@ -14,7 +14,7 @@
 // Pin definition
 #define PIN_RELAIS_OFF      23
 #define PIN_RELAIS_ON       19
-#define PIN_RELAIS_SAFTY    18
+#define PIN_RELAIS_SAFTY    27
 
 #define PIN_SENSOR      5
 

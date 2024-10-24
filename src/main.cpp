@@ -2,6 +2,10 @@
 #include "define.h"
 #include <LittleFS.h> //this needs to be first, or it all crashes and burns...
 
+#include "buttons.h"
+
+#include "flowSensor.h"
+
 #ifndef CONFIG_LITTLEFS_FOR_IDF_3_2
 #include <time.h>
 #endif
@@ -51,6 +55,7 @@ bool RelaisState = false;
 bool event = true;
 float volume = 0.0;
 
+/*
 #include <FlowSensor.h>
 
 #define type YFB1
@@ -63,6 +68,7 @@ void IRAM_ATTR count()
 {
   Sensor.count();
 }
+*/
 
 // flag for saving data
 bool shouldSaveConfig = false;
@@ -88,25 +94,24 @@ void OTA_setup(void)
   // No authentication by default
   ArduinoOTA.setPassword((const char *)"admin2Motion");
 
-  ArduinoOTA.onStart([]() {
-    Serial.println("Start");
-    //analogWrite(14, 0);
-    //digitalWrite(2, LOW);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
+  ArduinoOTA.onStart([]()
+                     {
+                       Serial.println("Start");
+                       // analogWrite(14, 0);
+                       // digitalWrite(2, LOW);
+                     });
+  ArduinoOTA.onEnd([]()
+                   { Serial.println("\nEnd"); });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
+                        { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
+  ArduinoOTA.onError([](ota_error_t error)
+                     {
     Serial.printf("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
     else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
     else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
+    else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
   ArduinoOTA.begin();
 }
 
@@ -192,8 +197,8 @@ String ip2Str(IPAddress ip)
 }
 
 String ip = "";
-bool  startup = true;
-  
+bool startup = true;
+
 void setup()
 {
   // put your setup code here, to run once:
@@ -207,19 +212,18 @@ void setup()
   pinMode(PIN_RELAIS_SAFTY, OUTPUT);
 
   digitalWrite(PIN_LED_int, HIGH);
-  digitalWrite(PIN_RELAIS_ON, HIGH);    // OFF
-  digitalWrite(PIN_RELAIS_OFF, HIGH);   // OFF
-  digitalWrite(PIN_RELAIS_SAFTY, HIGH); // OFF
+  digitalWrite(PIN_RELAIS_ON, HIGH);   // OFF
+  digitalWrite(PIN_RELAIS_OFF, HIGH);  // OFF
+  digitalWrite(PIN_RELAIS_SAFTY, LOW); // OFF
 
   // INPUT Definition
 
-  pinMode(PIN_BUTTON_1, INPUT_PULLUP);
-  pinMode(PIN_BUTTON_2, INPUT_PULLUP);
-  pinMode(PIN_BUTTON_3, INPUT_PULLUP);
-  
+  initButtons();
 
   // flow sensor
-  Sensor.begin(count);
+  initFlowSensor();
+
+  //Sensor.begin(count);
 
   /*
    * When using lcd.print() (and almost everywhere you use string literals),
@@ -386,9 +390,11 @@ void setup()
   lcd.setCursor(0, 1);
   lcd.print(F("              "));
 
-    // MQTT connect
-  if (!client.connected()) {
-    reconnect();}
+  // MQTT connect
+  if (!client.connected())
+  {
+    reconnect();
+  }
   client.loop();
   // digitalWrite(2, LOW);
   startup = true;
@@ -497,6 +503,8 @@ void webServer(void)
   }
 }
 
+String lcd_text = "";
+
 void loop()
 {
   static long lastTransferTime = 0;
@@ -538,6 +546,7 @@ void loop()
       client.publish(pup_Volume, String(volume).c_str(), 1);
     }
   */
+
   if (millis() - lastLedChangeTime > (1000)) // 1 Second
   {
     lastLedChangeTime = millis();
@@ -553,13 +562,10 @@ void loop()
     }
   }
 
-
-
-
   if (event)
   {
     // Update LCD Display
-    lcd.setCursor(0, 1);
+    // lcd.setCursor(0, 1);
 
     if (RelaisState)
     {
@@ -567,52 +573,72 @@ void loop()
       digitalWrite(PIN_RELAIS_ON, HIGH);
       digitalWrite(PIN_RELAIS_SAFTY, HIGH);
       Serial.println("R=ON");
-      lcd.print(F("R=ON "));
+      // lcd.print(F("R=ON "));
     }
     else
     {
       digitalWrite(PIN_RELAIS_SAFTY, LOW);
       digitalWrite(PIN_RELAIS_OFF, HIGH);
       digitalWrite(PIN_RELAIS_ON, LOW);
-      lcd.print(F("R=OFF"));
+      // lcd.print(F("R=OFF"));
       Serial.println("R=OFF");
     }
     event = false;
   }
 
-  static unsigned long timebefore = 0; // Same type as millis()
+  if (button1event || button2event || button3event)
+  {
+    if (button1event)
+    {
+      Serial.println("Taste 1");
+      digitalWrite(PIN_RELAIS_SAFTY, HIGH);
+      button1event = false;
+      lcd_text = "R=ON";
+    }
 
-  if (millis() - timebefore >= 1000)
+    if (button2event)
+    {
+      Serial.println("Taste 2");
+      digitalWrite(PIN_RELAIS_SAFTY, LOW);
+      button2event = false;
+      lcd_text = "R=OFF";
+    }
+
+    if (button3event)
+      Serial.println("Taste 3");
+  }
+
+  static unsigned long SensorTimer = 0; // Same type as millis()
+
+  if (millis() - SensorTimer >= 1000)
   {
 
-    bool button1 = digitalRead(PIN_BUTTON_1);
-    bool button2 = digitalRead(PIN_BUTTON_2);
-    bool button3 = digitalRead(PIN_BUTTON_3);
-    
-    Serial.print("button 1 : ");
-    Serial.println(button1);
-    Serial.print("button 2 : ");
-    Serial.println(button2);
-    Serial.print("button 3 : ");
-    Serial.println(button3);
-    
-    Sensor.read(0);
+    Serial.print("TIMER : ");
+    Serial.println(SensorTimer);
+
+    buttonStatus();
+
+    //Sensor.read(0);
+    flowSensorRead(0);
     Serial.print("Flow rate (L/minute) : ");
-    Serial.println(Sensor.getFlowRate_m());
+    Serial.println(getFlowRate_m());
     Serial.print("Volume (L) : ");
-    volume = Sensor.getVolume();
+    volume = getSensorVolume();
 
     Serial.println(volume);
     lcd.setCursor(8, 1);
     lcd.print(volume);
 
-    timebefore = millis();
+    SensorTimer = millis();
+
+    lcd.setCursor(0, 1);
+    lcd.print(lcd_text);
   }
 
   // Reset Volume
-  if (millis() - reset >= 60000)
-  {
-    // Sensor.resetVolume();
-    reset = millis();
-  }
+  //if (millis() - reset >= 60000)
+  //{
+  //  // Sensor.resetVolume();
+  //  reset = millis();
+  //}
 }

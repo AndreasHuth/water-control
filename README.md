@@ -1,6 +1,10 @@
-# water-control
+# watering System
 ## Short Description
-Project to control water quantities for watering plants
+Project to control water quantities for watering plants. 
+Control of an main and control valve via: 
+* buttons
+* MQTT - Wifi
+Display to show the status and data.
 
 ## How to use
 Please download the whole project and open it direktly in Visual Studio Code. 
@@ -14,7 +18,6 @@ Needed packages:
   bblanchon/ArduinoJson @ 5.13.4
   knolleary/PubSubClient @ ^2.8
   blackhack/LCD_I2C @ ^2.3.0
-  hafidh/FlowSensor @ ^1.5.0
 
 ## Links
 tbd.
