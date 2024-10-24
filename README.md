@@ -24,16 +24,17 @@ Needed packages:
 ## TODOs
 
 [ ] PCB testing
+
 [ ] Check supply concept
 [ ] Sensor testing
 [ ] Implement / check OTA
 [ ] Display control / UI 
 [ ] implement main function 
-  * turn on / off incl main ventil
+  - turn on / off incl main ventil
   * Control by button & MQTT
   * Specification of the water quantity & regulate water quantity 
   * button before mqtt 
-* define all saftey features
+[ ] define all saftey features
   * turn off by 
     * no wifi connection
     * no mqtt broker 
