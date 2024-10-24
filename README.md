@@ -20,6 +20,7 @@ Needed packages:
   bblanchon/ArduinoJson @ 5.13.4
   knolleary/PubSubClient @ ^2.8
   blackhack/LCD_I2C @ ^2.3.0
+  
 
 ## TODOs
 
