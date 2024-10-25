@@ -3,8 +3,8 @@
 #include <LittleFS.h> //this needs to be first, or it all crashes and burns...
 
 #include "buttons.h"
-
 #include "flowSensor.h"
+#include "analogInputs.h"
 
 #ifndef CONFIG_LITTLEFS_FOR_IDF_3_2
 #include <time.h>
@@ -36,13 +36,13 @@ char MQTTClientName[40] = MQTT_CLIENT_NAME;
 char OtaClientName[40] = OTA_CLIENT_NAME;
 
 // MQTT
-const char *pup_alive = "/topic/WaterControlActive";
-const char *pup_Volume = "/topic/volume";
-const char *pup_RelaisStatus = "/topic/relaisStatus";
+const char *pup_alive = "/watering/WaterControlActive";
+const char *pup_Volume = "/watering/volume";
+const char *pup_RelaisStatus = "/watering/relaisStatus";
 
-const char *sub_RelaisControl = "/topic/relaisControl";
-const char *sub_value2 = "/topic/value2";
-const char *sub_value3 = "/topic/value3";
+const char *sub_RelaisControl = "/watering/relaisControl";
+const char *sub_value2 = "/watering/value2";
+const char *sub_value3 = "/watering/value3";
 
 // WIFI
 WiFiClient espClient;
@@ -54,21 +54,6 @@ WiFiServer server(80);
 bool RelaisState = false;
 bool event = true;
 float volume = 0.0;
-
-/*
-#include <FlowSensor.h>
-
-#define type YFB1
-FlowSensor Sensor(type, PIN_SENSOR);
-unsigned long reset = 0;
-
-// Uncomment if use ESP8266 and ESP32
-// ICACHE_RAM_ATTR void count() {
-void IRAM_ATTR count()
-{
-  Sensor.count();
-}
-*/
 
 // flag for saving data
 bool shouldSaveConfig = false;
@@ -118,11 +103,11 @@ void OTA_setup(void)
 // MQTT callback function:
 boolean state = false;
 
-void MQTTcallback(char *topic, byte *payload, unsigned int length)
+void MQTTcallback(char *watering, byte *payload, unsigned int length)
 {
 
   Serial.print("Message arrived @ PUB [");
-  Serial.print(topic);
+  Serial.print(watering);
   Serial.print("] ");
   for (unsigned int i = 0; i < length; i++)
   {
@@ -130,7 +115,7 @@ void MQTTcallback(char *topic, byte *payload, unsigned int length)
   }
   Serial.println();
 
-  if (strcmp(topic, sub_RelaisControl) == 0)
+  if (strcmp(watering, sub_RelaisControl) == 0)
   {
     event = true;
     if ((char)payload[0] == '0')
@@ -146,11 +131,11 @@ void MQTTcallback(char *topic, byte *payload, unsigned int length)
     }
   }
 
-  if (strcmp(topic, sub_value2) == 0)
+  if (strcmp(watering, sub_value2) == 0)
   {
   }
 
-  if (strcmp(topic, sub_value3) == 0)
+  if (strcmp(watering, sub_value3) == 0)
   {
   }
 }
@@ -207,23 +192,37 @@ void setup()
 
   // OUTPUT Definition !
   pinMode(PIN_LED_int, OUTPUT);
-  pinMode(PIN_RELAIS_OFF, OUTPUT);
-  pinMode(PIN_RELAIS_ON, OUTPUT);
-  pinMode(PIN_RELAIS_SAFTY, OUTPUT);
+  pinMode(PIN_LED_ext, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
+
+  pinMode(PIN_RELAY1, OUTPUT);
+  pinMode(PIN_RELAY2, OUTPUT);
+  pinMode(PIN_RELAY3, OUTPUT);
 
   digitalWrite(PIN_LED_int, HIGH);
-  digitalWrite(PIN_RELAIS_ON, HIGH);   // OFF
-  digitalWrite(PIN_RELAIS_OFF, HIGH);  // OFF
-  digitalWrite(PIN_RELAIS_SAFTY, LOW); // OFF
+  digitalWrite(PIN_LED_ext, LOW);
+  digitalWrite(PIN_BUZZER, HIGH);
+
+  digitalWrite(PIN_RELAY1, LOW); // OFF
+  digitalWrite(PIN_RELAY1, LOW); // OFF
+  digitalWrite(PIN_RELAY1, LOW); // OFF
 
   // INPUT Definition
 
+  pinMode(PIN_DS18B20, INPUT);
+
+  pinMode(PIN_IN1, INPUT_PULLUP);
+  pinMode(PIN_IN2, INPUT_PULLUP);
+  pinMode(PIN_IN3, INPUT_PULLUP);
+
+  // 3 Buttons
   initButtons();
 
   // flow sensor
   initFlowSensor();
 
-  //Sensor.begin(count);
+  // initi ADC channels > LDR / Suppy voltage
+  initADCchannels();
 
   /*
    * When using lcd.print() (and almost everywhere you use string literals),
@@ -507,11 +506,12 @@ String lcd_text = "";
 
 void loop()
 {
-  static long lastTransferTime = 0;
+  static unsigned long lastTransferTime = 0;
+  static unsigned long lastTransferMQTTTime = 0;
+  static unsigned long lastLedChangeTime = 0;
+  static unsigned long AnalogTimer = 0;
+  static unsigned long SensorTimer = 0; // Same type as millis()
 
-  static long lastTransferMQTTTime = 0;
-
-  static long lastLedChangeTime = 0;
   static bool ledState = false;
 
   bool buttonState = true;
@@ -565,22 +565,22 @@ void loop()
   if (event)
   {
     // Update LCD Display
-    // lcd.setCursor(0, 1);
+    lcd.setCursor(0, 1);
 
     if (RelaisState)
     {
-      digitalWrite(PIN_RELAIS_OFF, LOW);
-      digitalWrite(PIN_RELAIS_ON, HIGH);
-      digitalWrite(PIN_RELAIS_SAFTY, HIGH);
-      Serial.println("R=ON");
-      // lcd.print(F("R=ON "));
+      digitalWrite(PIN_RELAY1, LOW);
+      digitalWrite(PIN_RELAY2, HIGH);
+      digitalWrite(PIN_RELAY3, HIGH);
+      Serial.println("R=ON ");
+      lcd.print(F("R=ON "));
     }
     else
     {
-      digitalWrite(PIN_RELAIS_SAFTY, LOW);
-      digitalWrite(PIN_RELAIS_OFF, HIGH);
-      digitalWrite(PIN_RELAIS_ON, LOW);
-      // lcd.print(F("R=OFF"));
+      digitalWrite(PIN_RELAY1, LOW);
+      digitalWrite(PIN_RELAY2, HIGH);
+      digitalWrite(PIN_RELAY3, LOW);
+      lcd.print(F("R=OFF"));
       Serial.println("R=OFF");
     }
     event = false;
@@ -591,16 +591,20 @@ void loop()
     if (button1event)
     {
       Serial.println("Taste 1");
-      digitalWrite(PIN_RELAIS_SAFTY, HIGH);
+      // digitalWrite(PIN_RELAY3, HIGH);
       button1event = false;
+      event = true;
+      RelaisState = true;
       lcd_text = "R=ON";
     }
 
     if (button2event)
     {
       Serial.println("Taste 2");
-      digitalWrite(PIN_RELAIS_SAFTY, LOW);
+      // digitalWrite(PIN_RELAY3, LOW);
       button2event = false;
+      event = true;
+      RelaisState = false;
       lcd_text = "R=OFF";
     }
 
@@ -608,17 +612,23 @@ void loop()
       Serial.println("Taste 3");
   }
 
-  static unsigned long SensorTimer = 0; // Same type as millis()
-
   if (millis() - SensorTimer >= 1000)
   {
-
+    SensorTimer = millis();
     Serial.print("TIMER : ");
     Serial.println(SensorTimer);
 
     buttonStatus();
 
-    //Sensor.read(0);
+    Serial.print("Suppyl : ");
+    Serial.println(readSuppyVoltage());
+    // bool checkSuppyVoltage (float);
+
+    Serial.print("LDR : ");
+    Serial.println(readLDRvalue());
+    Serial.print("LightLevel : ");
+    Serial.println(getBrightnessLevels());
+
     flowSensorRead(0);
     Serial.print("Flow rate (L/minute) : ");
     Serial.println(getFlowRate_m());
@@ -629,14 +639,22 @@ void loop()
     lcd.setCursor(8, 1);
     lcd.print(volume);
 
-    SensorTimer = millis();
-
     lcd.setCursor(0, 1);
     lcd.print(lcd_text);
   }
 
+  if (millis() - AnalogTimer >= 100)
+  {
+    AnalogTimer = millis();
+
+    Serial.print("TIMER : ");
+    Serial.println(SensorTimer);
+
+    analogInputsTask_100();
+  }
+
   // Reset Volume
-  //if (millis() - reset >= 60000)
+  // if (millis() - reset >= 60000)
   //{
   //  // Sensor.resetVolume();
   //  reset = millis();
