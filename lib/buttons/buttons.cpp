@@ -14,30 +14,24 @@
 Serial.println(F("Init sensor!"));
 #endif
 
-bool button1event = false;
-bool button2event = false;
-bool button3event = false;
+volatile bool button1event = false;
+volatile bool button2event = false;
+volatile bool button3event = false;
 
 // Checks if motion was detected, sets LED HIGH and starts a timer
 void IRAM_ATTR Button1Event()
 {
-    // digitalWrite(PIN_BUTTON_1, HIGH);
     button1event = true;
-
 }
 
 void IRAM_ATTR Button2Event()
 {
-    // digitalWrite(PIN_BUTTON_1, HIGH);
     button2event = true;
-
 }
 
 void IRAM_ATTR Button3Event()
 {
-    // digitalWrite(PIN_BUTTON_1, HIGH);
     button3event = true;
-
 }
 
 void initButtons(void)

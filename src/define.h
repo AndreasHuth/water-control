@@ -18,12 +18,13 @@
 // Pin definition
 
 // Inputs
-#define PIN_SENSOR      16 
+#define PIN_SENSOR      16
+
 #define PIN_BUTTON_1    19
 #define PIN_BUTTON_2    18
 #define PIN_BUTTON_3    17
 
-#define PIN_LDR         25
+#define PIN_LDR         25      // Tut nicht !!! 
 #define PIN_DS18B20     33
 #define PIN_UIN         32
 
@@ -39,5 +40,6 @@
 #define PIN_RELAY1      13      // on?
 #define PIN_RELAY2      27      // off?
 #define PIN_RELAY3      26      // Saftey Switch
+
 
 

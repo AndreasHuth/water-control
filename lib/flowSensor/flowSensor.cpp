@@ -18,15 +18,15 @@
 Serial.println(F("Init sensor!"));
 #endif
 
-unsigned long pulse;
+volatile unsigned long pulse;
 unsigned long totalpulse;
 
 unsigned long pulse1liter = 396; // Inet: 450
 unsigned long timebefore = 0;
-float flowratehour = 0;
-float flowrateminute = 0;
-float flowratesecound = 0;
-float SensorVolume = 0;
+float flowratehour = 0.0;
+float flowrateminute = 0.0;
+float flowratesecound = 0.0;
+float SensorVolume = 0.0;
 
 // Checks if motion was detected, sets LED HIGH and starts a timer
 void IRAM_ATTR FlowSensorEvent()
@@ -42,10 +42,10 @@ void initFlowSensor(void)
     attachInterrupt(digitalPinToInterrupt(PIN_SENSOR), FlowSensorEvent, RISING);
 }
 
-void flowSensorRead(long calibration)
+void flowSensorRead(unsigned long calibration)
 {
-    flowratesecound = (pulse / (pulse1liter + calibration)) / ((millis() - timebefore) / 1000);
-    SensorVolume += (pulse / (pulse1liter + calibration));
+    flowratesecound = (float) (pulse / (pulse1liter + calibration)) / ((millis() - timebefore) / 1000ul);
+    SensorVolume += (float) (pulse / (pulse1liter + calibration));
     totalpulse += pulse;
     pulse = 0;
     timebefore = millis();

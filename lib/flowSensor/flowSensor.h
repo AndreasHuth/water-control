@@ -10,7 +10,7 @@
 
 void initFlowSensor(void);
 
-void flowSensorRead(long calibration);
+void flowSensorRead(unsigned long  calibration);
 unsigned long getTotalPulse(void);
 float getFlowRate_h(void);
 float getFlowRate_m(void);

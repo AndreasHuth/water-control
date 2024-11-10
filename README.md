@@ -26,7 +26,9 @@ Needed packages:
 
 ## TODOs
 
-- [ ] PCB testing
+- [x] PCB testing
+   * failures due to wrong PIN mapping (ACD2 is not working with wifi!) :-(
+   * LDR will NOT work.
 - [ ] Check supply concept
 - [ ] Sensor testing
 - [ ] Implement / check OTA

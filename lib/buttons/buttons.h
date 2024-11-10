@@ -8,9 +8,9 @@
 #ifndef BUTTONS_H_
 #define BUTTONS_H_
 
-extern bool button1event;
-extern bool button2event;
-extern bool button3event;
+extern volatile bool button1event;
+extern volatile bool button2event;
+extern volatile bool button3event;
 
 void initButtons(void);
 void buttonStatus (void);

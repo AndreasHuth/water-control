@@ -18,16 +18,9 @@ void initADCchannels(void);
 float readSuppyVoltage(void);
 bool checkSuppyVoltage (float);
 
-float readLDRvalue (void);
-int getBrightnessLevels (void);
-
 void analogInputsTask_100(void);
-
 
 extern float supplyvoltage;
 extern bool lowVoltage; 
-extern int ldrvalue;
-extern int brightnessLevel; 
-
 
 #endif /* ANALOG_H_ */

@@ -8,25 +8,16 @@
 #include "../../src/define.h"
 #include "analogInputs.h"
 
-int ldrvalue;
-int brightnessLevel = 0;
-
-float supplyvoltage = 0.0;
+float supplyvoltage = 12.0;
 bool lowVoltage = true;
 
-#define CONVERSION_VALUE 5    // 200kOhm / 50kOhm  >> 250/50 = 5
-#define BRIGHTNESS_FACTOR 409 //
+#define CONVERSION_VALUE 6.0    // 100kOhm / 20kOhm  >> 120/20 = 6
 
-// #define DEBUG 1
+//#define DEBUG 1
 #define RATIO 0.90
-
-#if defined(DEBUG)
-Serial.println(F("Init sensor!"));
-#endif
 
 void initADCchannels(void)
 {
-    pinMode(PIN_LDR, INPUT);
     pinMode(PIN_UIN, INPUT);
 }
 
@@ -38,10 +29,12 @@ void calcSuppyVoltage(void)
     supplyvoltage = (1 - RATIO) * adcvalue + RATIO * old_supply_value;
     old_supply_value = supplyvoltage;
 
+#if defined(DEBUG)
     Serial.print("adc: ");
     Serial.println(adcvalue);
     Serial.print("voltage : ");
     Serial.println(supplyvoltage);
+#endif
 }
 
 float readSuppyVoltage(void)
@@ -75,6 +68,7 @@ void checkVoltage(float reference)
     else
         lowVoltage = false;
 
+#if defined(DEBUG)
     Serial.print("reference: ");
     Serial.println(reference);
 
@@ -83,39 +77,11 @@ void checkVoltage(float reference)
 
     Serial.print("low supply : ");
     Serial.println(lowVoltage);
-}
-
-void calcLDRvalue(void)
-{
-    static float old_LDR_value = 0.0;
-
-    float adcvalue = (float)analogRead(PIN_LDR);
-
-    ldrvalue = (1 - RATIO) * adcvalue + RATIO * old_LDR_value;
-    old_LDR_value = ldrvalue;
-
-    Serial.print("adc: ");
-    Serial.println(adcvalue);
-    Serial.print("ldrvalue : ");
-    Serial.println(ldrvalue);
-}
-
-float readLDRvalue(void)
-{
-    return ldrvalue;
-}
-
-int getBrightnessLevels(void)
-{
-    brightnessLevel = ldrvalue / BRIGHTNESS_FACTOR;
-    return brightnessLevel;
+#endif
 }
 
 void analogInputsTask_100(void)
 {
-    calcLDRvalue();
-    getBrightnessLevels();
-
     calcSuppyVoltage();
     checkVoltage(LOWBATTERY);
 }

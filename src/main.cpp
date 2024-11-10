@@ -52,8 +52,8 @@ WiFiServer server(80);
 
 /// @brief
 bool RelaisState = false;
-bool event = true;
-float volume = 0.0;
+bool event = false;
+float volume = 0.00000001;
 
 // flag for saving data
 bool shouldSaveConfig = false;
@@ -77,7 +77,7 @@ void OTA_setup(void)
   ArduinoOTA.setHostname("WEMOS_ESP32");
 
   // No authentication by default
-  ArduinoOTA.setPassword((const char *)"admin2Motion");
+  ArduinoOTA.setPassword((const char *)"admin2water");
 
   ArduinoOTA.onStart([]()
                      {
@@ -201,7 +201,7 @@ void setup()
 
   digitalWrite(PIN_LED_int, HIGH);
   digitalWrite(PIN_LED_ext, LOW);
-  digitalWrite(PIN_BUZZER, HIGH);
+  digitalWrite(PIN_BUZZER, LOW);
 
   digitalWrite(PIN_RELAY1, LOW); // OFF
   digitalWrite(PIN_RELAY1, LOW); // OFF
@@ -210,10 +210,6 @@ void setup()
   // INPUT Definition
 
   pinMode(PIN_DS18B20, INPUT);
-
-  pinMode(PIN_IN1, INPUT_PULLUP);
-  pinMode(PIN_IN2, INPUT_PULLUP);
-  pinMode(PIN_IN3, INPUT_PULLUP);
 
   // 3 Buttons
   initButtons();
@@ -377,14 +373,14 @@ void setup()
 
   lcd.setCursor(0, 1);
   lcd.print(F("MQTT connected"));
-  delay(2000);
+  delay(1000);
 
   // Webserver!
   server.begin();
 
   lcd.setCursor(0, 1);
   lcd.print(F("WebServer done"));
-  delay(2000);
+  delay(1000);
 
   lcd.setCursor(0, 1);
   lcd.print(F("              "));
@@ -395,7 +391,14 @@ void setup()
     reconnect();
   }
   client.loop();
-  // digitalWrite(2, LOW);
+
+  analogInputsTask_100();
+
+  // beeb
+  digitalWrite(PIN_BUZZER, HIGH);
+  delay(30);
+  digitalWrite(PIN_BUZZER, LOW);
+
   startup = true;
 }
 
@@ -554,7 +557,7 @@ void loop()
     {
       ledState = false;
       digitalWrite(PIN_LED_int, HIGH);
-    }
+     }
     else
     {
       ledState = true;
@@ -577,9 +580,9 @@ void loop()
     }
     else
     {
-      digitalWrite(PIN_RELAY1, LOW);
-      digitalWrite(PIN_RELAY2, HIGH);
-      digitalWrite(PIN_RELAY3, LOW);
+      digitalWrite(PIN_RELAY1, HIGH);
+      digitalWrite(PIN_RELAY2, LOW);
+      digitalWrite(PIN_RELAY3, HIGH);
       lcd.print(F("R=OFF"));
       Serial.println("R=OFF");
     }
@@ -591,7 +594,6 @@ void loop()
     if (button1event)
     {
       Serial.println("Taste 1");
-      // digitalWrite(PIN_RELAY3, HIGH);
       button1event = false;
       event = true;
       RelaisState = true;
@@ -601,7 +603,6 @@ void loop()
     if (button2event)
     {
       Serial.println("Taste 2");
-      // digitalWrite(PIN_RELAY3, LOW);
       button2event = false;
       event = true;
       RelaisState = false;
@@ -609,7 +610,14 @@ void loop()
     }
 
     if (button3event)
+    {
       Serial.println("Taste 3");
+      button3event = false;
+      event = true;
+      RelaisState = false;
+
+      lcd_text = "R=OFF";
+    }
   }
 
   if (millis() - SensorTimer >= 1000)
@@ -622,12 +630,6 @@ void loop()
 
     Serial.print("Suppyl : ");
     Serial.println(readSuppyVoltage());
-    // bool checkSuppyVoltage (float);
-
-    Serial.print("LDR : ");
-    Serial.println(readLDRvalue());
-    Serial.print("LightLevel : ");
-    Serial.println(getBrightnessLevels());
 
     flowSensorRead(0);
     Serial.print("Flow rate (L/minute) : ");
@@ -646,10 +648,6 @@ void loop()
   if (millis() - AnalogTimer >= 100)
   {
     AnalogTimer = millis();
-
-    Serial.print("TIMER : ");
-    Serial.println(SensorTimer);
-
     analogInputsTask_100();
   }
 
