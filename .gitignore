@@ -3,5 +3,5 @@
 .gcc-flags.json
 .vscode
 .travis.yml
-gitignore
+.gitignore
 geheim.txt
