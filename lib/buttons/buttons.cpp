@@ -21,16 +21,19 @@ volatile bool button3event = false;
 // Checks if motion was detected, sets LED HIGH and starts a timer
 void IRAM_ATTR Button1Event()
 {
-    button1event = true;
+    if (!digitalRead(PIN_BUTTON_1))
+        button1event = true;
 }
 
 void IRAM_ATTR Button2Event()
 {
+    if (!digitalRead(PIN_BUTTON_2))
     button2event = true;
 }
 
 void IRAM_ATTR Button3Event()
 {
+    if (!digitalRead(PIN_BUTTON_3))
     button3event = true;
 }
 
@@ -52,9 +55,9 @@ void initButtons(void)
 
 void buttonStatus(void)
 {
-    bool button1 = digitalRead(PIN_BUTTON_1);
-    bool button2 = digitalRead(PIN_BUTTON_2);
-    bool button3 = digitalRead(PIN_BUTTON_3);
+    bool button1 = !digitalRead(PIN_BUTTON_1);
+    bool button2 = !digitalRead(PIN_BUTTON_2);
+    bool button3 = !digitalRead(PIN_BUTTON_3);
 
     Serial.print("button 1 : ");
     Serial.println(button1);

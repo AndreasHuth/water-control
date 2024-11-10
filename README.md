@@ -29,6 +29,7 @@ Needed packages:
 - [x] PCB testing
    * failures due to wrong PIN mapping (ACD2 is not working with wifi!) :-(
    * LDR will NOT work.
+   * Jumper J2 /J3 / J4 will not work due to missing pull up (ESP32 does not support)
 - [ ] Check supply concept
 - [ ] Sensor testing
 - [ ] Implement / check OTA
@@ -47,9 +48,14 @@ Needed packages:
   * MQTT QoS2 !
 - [ ] implement minor features
   * temperature measurement
-  * LDR / light function
+  * LDR / light function - cancelled, not supported by HW
 
 - [ ] if the proof of function is successful, design the housing  :-) 
+
+
+## ISSUES 
+- LDR / light function - cancelled, not supported by HW
+- Jumper J2 /J3 / J4 will not work due to missing pull up resistors
 
 
 ## Links

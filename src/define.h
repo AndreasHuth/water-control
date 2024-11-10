@@ -11,6 +11,10 @@
 #define DEVICE_NAME         "ESP32 - Watering System"
 #define SW_BASE_VERSION     "V1.1"
 
+// DELAYs
+
+#define BOOT_TIMING      2000 
+
 // Parameters 
 
 #define LOWBATTERY      10.0
@@ -34,12 +38,10 @@
 
 //Outputs
 #define PIN_BUZZER      23
-#define PIN_LED_int     2 
+#define PIN_LED_int     2
 #define PIN_LED_ext     4
 
 #define PIN_RELAY1      13      // on?
 #define PIN_RELAY2      27      // off?
 #define PIN_RELAY3      26      // Saftey Switch
-
-
 

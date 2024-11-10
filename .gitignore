@@ -2,5 +2,6 @@
 .clang_complete
 .gcc-flags.json
 .vscode
+.travis.yml
 gitignore
 geheim.txt
